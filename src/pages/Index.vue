@@ -50,7 +50,6 @@
           <li v-for="f in updateMenu.meal.lunch.menu" :key="updateMenu.meal.lunch.menu.indexOf(f)">
             <q-field>
               <div class="input-update">
-                index :{{updateMenu.meal.lunch.menu.indexOf(f)}}
                 <q-input inverted
                           color="grey"
                           :value = "f"
@@ -88,7 +87,6 @@
           <li v-for="f in updateMenu.meal.diner.menu" :key="updateMenu.meal.diner.menu.indexOf(f)">
             <q-field>
               <div class="input-update">
-                index :{{updateMenu.meal.diner.menu.indexOf(f)}}
                 <q-input inverted
                           color="grey"
                           :value = "f"
@@ -155,8 +153,6 @@ export default {
     getMenu() {
       axios.get('/menu.json')
         .then((res) => {
-          /*eslint-disable*/
-          console.log('THIS DATA', this.data);
           this.data = res.data;
           /*eslint-disable*/
           console.log('fetched DATA', JSON.stringify(this.data));
