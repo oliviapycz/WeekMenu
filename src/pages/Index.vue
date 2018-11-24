@@ -6,24 +6,24 @@
         <h4>{{ d.day.toUpperCase() }}</h4>
       </q-card-title>
       <q-card-separator inset />
-      <q-card-title  class="subtitle" v-if="d.meal.lunch.menu.length > 0">
+      <q-card-title  class="subtitle" v-if="d.meal.lunch.menu[0] !== ''">
           <span slot="subtitle">{{ d.meal.lunch.daytime }}</span>
       </q-card-title>
-      <q-card-main class="main-card" v-if="d.meal.lunch.menu.length > 0">
+      <q-card-main class="main-card" v-if="d.meal.lunch.menu[0] !== ''">
         <ul>
-          <li v-for="f in d.meal.lunch.menu" :key="f.index">
-            <p>{{ f }}</p>
+          <li v-for="food in d.meal.lunch.menu" :key="food.index">
+            <p>{{ food }}</p>
           </li>
         </ul>
       </q-card-main>
       <!-- <q-card-separator inset /> -->
-      <q-card-title class="subtitle" v-if="d.meal.diner.menu.length > 0">
+      <q-card-title class="subtitle" v-if="d.meal.diner.menu[0] !== ''">
         <span slot="subtitle">{{ d.meal.diner.daytime }}</span>
       </q-card-title>
-      <q-card-main class="main-card" v-if="d.meal.diner.menu.length > 0">
+      <q-card-main class="main-card" v-if="d.meal.diner.menu[0] !== ''">
         <ul>
-          <li v-for="f in d.meal.diner.menu" :key="f.index">
-            <p>{{ f }}</p>
+          <li v-for="food in d.meal.diner.menu" :key="food.index">
+            <p>{{ food }}</p>
           </li>
         </ul>
       </q-card-main>
@@ -34,6 +34,8 @@
              class="btn-add-md"
              @click="openModal(d)"/>
     </q-card>
+
+
     <q-modal v-if="showModal" v-model="showModal" minimized ref="modalRef" class="modal">
 
       <q-card-title class="title">
@@ -45,15 +47,25 @@
       </q-card-title>
       <q-card-main class="modal-main-card" v-if="updateMenu.meal.lunch.menu.length > 0">
         <ul style="margin:auto">
-          <li v-for="f in updateMenu.meal.lunch.menu" :key="f.index">
+          <li v-for="f in updateMenu.meal.lunch.menu" :key="updateMenu.meal.lunch.menu.indexOf(f)">
             <q-field>
               <div class="input-update">
                 <q-input inverted
                           color="grey"
                           :value = "f"
-                          style="width:90%"
+                          @blur.prevent="(newVal) => {
+                            i = updateMenu.meal.lunch.menu.indexOf(f);
+                            f = newVal;
+                            lunch = 'lunch';
+                            updateInput(newVal.target.value, i, lunch)}"
+                            style="width:90%"
                           />
-                <img src="./../statics/icons/cross-close.svg">
+                <img src="./../statics/icons/cross-close.svg"
+                      @click="() => {
+                                  i = updateMenu.meal.lunch.menu.indexOf(f);
+                                  f;
+                                  lunch = 'lunch';
+                                  deleteInput(f, i, lunch)}">
               </div>
             </q-field>
           </li>
@@ -61,7 +73,10 @@
              color="primary"
              icon="add_circle"
              size="small"
-             class="btn-add"/>
+             class="btn-add"
+             @click="() => {
+                        lunch = 'lunch';
+                        addInput(lunch)}"/>
         </ul>
       </q-card-main>
       <q-card-title class="subtitle" v-if="updateMenu.meal.diner.menu.length > 0">
@@ -69,32 +84,48 @@
       </q-card-title>
       <q-card-main class="modal-main-card" v-if="updateMenu.meal.diner.menu.length > 0">
         <ul style="margin:auto">
-          <li v-for="f in updateMenu.meal.diner.menu" :key="f.index">
+          <li v-for="f in updateMenu.meal.diner.menu" :key="updateMenu.meal.diner.menu.indexOf(f)">
             <q-field>
               <div class="input-update">
                 <q-input inverted
                           color="grey"
                           :value = "f"
+                          @blur="(newVal) => {
+                            i = updateMenu.meal.diner.menu.indexOf(f);
+                            f = newVal;
+                            diner = 'diner'
+                            updateInput(newVal.target.value, i, diner)}"
                           style="width:90%"
                           />
-                <img src="./../statics/icons/cross-close.svg">
+                <img src="./../statics/icons/cross-close.svg"
+                     @click="() => {
+                            i = updateMenu.meal.diner.menu.indexOf(f);
+                            f;
+                            diner = 'diner';
+                            deleteInput(f, i, diner)}">
               </div>
             </q-field>
           </li>
           <q-btn round
              color="primary"
              icon="add_circle"
-             size="small"/>
+             size="small"
+             @click="() => {
+                        diner = 'diner';
+                        addInput(diner)}"/>
         </ul>
       </q-card-main>
       <q-card-separator inset />
       <div class="btn__action">
         <q-btn color="secondary "
-        sv-close-overlay label="SAVE" @click="showModal = false" class="btn"/>
+        sv-close-overlay label="SAVE"
+        @click="updateDailyMenu(updateMenu)" class="btn"/>
         <q-btn color="tertiary "
-        sv-close-overlay label="CANCEL" @click="showModal = false" class="btn"/>
+        sv-close-overlay label="CANCEL" @click="cancelUpdateDailyMenu(updateMenu)" class="btn"/>
       </div>
     </q-modal>
+
+
   </q-page>
 </template>
 
@@ -102,7 +133,8 @@
 </style>
 
 <script>
-import { data } from './../data.js';
+// import { data } from './../data.js';
+import axios from './../axios.js';
 
 export default {
   name: 'PageIndex',
@@ -111,23 +143,106 @@ export default {
       emptyLunchMeal: false,
       emptyDinerMeal: false,
       emptyMealMessage: 'Nothing added yet!',
-      data,
+      data: [],
       showModal: false,
       updateMenu: [],
       email: '',
     };
   },
   methods: {
+    getMenu() {
+      axios.get('/menu.json')
+        .then((res) => {
+          this.data = res.data;
+          /*eslint-disable*/
+          console.log('fetched DATA', JSON.stringify(this.data));
+        });
+    },
+    addInput(meal) {
+      console.log('MEAL', meal);
+      /*eslint-disable*/
+      if (meal === 'lunch') {
+        this.updateMenu.meal.lunch.menu.push('');
+      } else {
+        this.updateMenu.meal.diner.menu.push('');
+      }
+      /*eslint-disable*/
+      console.log('RES', JSON.stringify(this.updateMenu));
+    },
+    updateInput(el, key, meal) {
+      console.log('EL', el);
+      console.log('INDEX', key);
+      console.log('MEAL', meal);
+      /*eslint-disable*/
+      if (meal === 'lunch') {
+        for (let index = 0; index < this.updateMenu.meal.lunch.menu.length; index++) {
+          if (index === key) {
+            this.updateMenu.meal.lunch.menu[key] = el;
+          }
+        }
+      } else {
+        for (let index = 0; index < this.updateMenu.meal.diner.menu.length; index++) {
+          if (index === key) {
+            this.updateMenu.meal.diner.menu[key] = el;
+          }
+        }
+      }
+      /*eslint-disable*/
+      console.log('RES', JSON.stringify(this.updateMenu));
+    },
+    deleteInput(el, key, meal) {
+      console.log('EL', el);
+      console.log('INDEX', key);
+      console.log('MEAL', meal);
+      /*eslint-disable*/
+      if (meal === 'lunch') {
+        for (let index = 0; index < this.updateMenu.meal.lunch.menu.length; index++) {
+          if (index === key) {
+            this.updateMenu.meal.lunch.menu.splice(index, 1);
+          }
+        }
+      } else {
+        for (let index = 0; index < this.updateMenu.meal.diner.menu.length; index++) {
+          if (index === key) {
+            this.updateMenu.meal.diner.menu.splice(index, 1);
+          }
+        }
+      }
+      /*eslint-disable*/
+      console.log('RES', JSON.stringify(this.updateMenu));
+    },
+    updateDailyMenu(el) {
+      console.log('EL IN updateDailyMenu', JSON.stringify(el));
+      console.log(' DATA', JSON.stringify(this.data));
+      axios.put('/menu.json', this.data)
+        .then(res => console.log(res))
+        .catch(err => console.log(err));
+      this.showModal = false;
+    },
+    cancelUpdateDailyMenu(el) {
+      console.log('cancelUpdateDailyMenu', JSON.stringify(el));
+      this.getMenu();
+      this.showModal = false;
+    },
     openModal(el) {
       this.showModal = true;
       this.updateMenu = el;
       // eslint-disable-next-line
-      console.log('updateMenu', this.updateMenu);
+      console.log('updateMenu', JSON.stringify(this.updateMenu));
     },
   },
   beforeUpdate() {
     // eslint-disable-next-line
-    console.log('data', this.showModal);
+    console.log('this.showModal', this.showModal);
+  },
+  beforeMount() {
+    console.log('beforeMount DATA', this.data);
+    // axios.post('/menu.json', this.data)
+    //   .then(res => console.log(res))
+    //   .catch(err => console.log(err));
+    this.getMenu();
+    
+    console.log('beforeMount UPDATE MENU', this.data);
   },
 };
 </script>

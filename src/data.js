@@ -18,7 +18,7 @@ export const data = [
     meal: {
       lunch: {
         daytime: 'Midi',
-        menu: [],
+        menu: [''],
       },
       diner: {
         daytime: 'Soir',
@@ -31,7 +31,7 @@ export const data = [
     meal: {
       lunch: {
         daytime: 'Midi',
-        menu: [],
+        menu: [''],
       },
       diner: {
         daytime: 'Soir',
